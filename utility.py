@@ -128,7 +128,6 @@ def compute_boundary(mask):
 
     elif mask.ndim == 3:
 
-        # axis 0 crossings
         up = mask[1:, :, :] & ~mask[:-1, :, :]
         bdry[1:, :, :] |= up
         coord = np.argwhere(up)
@@ -141,7 +140,6 @@ def compute_boundary(mask):
         s0.append(coord + [1, 0, 0])
         s1.append(coord)
 
-        # axis 1 crossings
         left = mask[:, 1:, :] & ~mask[:, :-1, :]
         bdry[:, 1:, :] |= left
         coord = np.argwhere(left)
@@ -154,7 +152,6 @@ def compute_boundary(mask):
         s0.append(coord + [0, 1, 0])
         s1.append(coord)
 
-        # axis 2 crossings
         front = mask[:, :, 1:] & ~mask[:, :, :-1]
         bdry[:, :, 1:] |= front
         coord = np.argwhere(front)
@@ -223,8 +220,9 @@ def contour_interpolation(field, threshold):
     m2 = 1-m1
     
     points = m1[:, None] * s0 + m2[:, None] * s1
+    boundary_field = m1 * b0 + m2 * b1
     
-    return(points, bdry, s0, s1, m1, m2)
+    return(points, boundary_field, bdry, s0, s1, m1, m2)
 
 def rademacher(n):
     """
@@ -251,7 +249,17 @@ def symmetric_hausdorff(a, b):
 
     return max(d_ab, d_ba)
 
+def SSS_bootstrap(instances, threshold, alhaa):
+    
+    
+    
 
+    
+    return()
+
+def Hausdorff_bootstrap():
+    
+    return()
 
 
 
