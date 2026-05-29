@@ -174,8 +174,8 @@ def compute_boundary(mask):
         s0 = np.vstack(s0)
         s1 = np.vstack(s1)
 
-    return bdry, s1, s0
-    
+    return (bdry, s1, s0)
+
 def simulate_instances(signal, n_subject, noise_fwhm, noise_scale):
     
     field_shape = signal.shape
@@ -220,9 +220,15 @@ def contour_interpolation(field, threshold):
     m2 = 1-m1
     
     points = m1[:, None] * s0 + m2[:, None] * s1
-    boundary_field = m1 * b0 + m2 * b1
+    field_at_boundary = m1 * b0 + m2 * b1
     
-    return(points, boundary_field, bdry, s0, s1, m1, m2)
+    return({"points": points,
+            "field_at_boundary": field_at_boundary,
+            "boundary":bdry,
+            "s0":s0,
+            "s1":s1,
+            "m1":m1,
+            "m2":m2})
 
 def rademacher(n):
     """
@@ -248,19 +254,71 @@ def symmetric_hausdorff(a, b):
     d_ba = directed_hausdorff(b, a)[0]
 
     return max(d_ab, d_ba)
+    
+def Bowring_bootstrap(instances, coefficient, boot_rep, threshold,):
+    
+    result = contour_interpolation(coefficient, threshold)
+    s0 = result["s0"]
+    s1 = result["s1"]
+    m1 = result["m1"]
+    m2 = result["m2"]
+    s0_coord = tuple(s0.T)
+    s1_coord = tuple(s1.T)
+    n_subject = instances.shape[0]
+    epsilons = instances - coefficient
+    epsilons /= epsilons.std(axis=0, ddof = 1)
+    rademacher_shape = (n_subject,) + (1,) * (epsilons.ndim - 1)
+    supremum_values = []
 
-def SSS_bootstrap(instances, threshold, alhaa):
-    
-    
-    
+    for i in range(boot_rep):
+        rad = rademacher(n_subject)
+        rad = rad.reshape(rademacher_shape)
+        boot_residual = rad * epsilons
 
-    
+        boot_residual /= boot_residual.std(axis=0, ddof=1)
+        boot_variable = np.sum(boot_residual, axis = 0)/np.sqrt(n_subject)
+        boot_boundary = m1 * boot_variable[s0_coord] + m2 * boot_variable[s1_coord]
+        supremum = np.max(np.abs(boot_boundary))
+        supremum_values.append(supremum)
+        
+    supremum_values = np.asarray(supremum_values)
+    return (supremum_values)
+"""
+def Hausdorff_bootstrap(instances, coefficient, boot_rep, alpha):
+    n_subject = instances.shape[0]
+    est_bdry,_,_ = compute_boundary(mask)
     return()
+"""
+def bootstrap_directed_radius_rademacher(instances, thr, boot_rep):
+    n_subject = instances.shape[0] # number of subject
 
-def Hausdorff_bootstrap():
-    
-    return()
+    coefficient = np.mean(instances, axis=0) #mu hat
+    est_bdry, _, _, _ = contour_points(coefficient, thr) #estimated bdry interpolated
 
+    if len(est_bdry) == 0: #no threshold so return early
+        return None, est_bdry, coefficient
+
+    residual = instances - coefficient #residual
+    boot_stats = []
+
+    for _ in range(boot_rep):
+        ri = rademacher(n_subject)
+        boot_residual = np.sum(ri[:, None, None] * residual, axis=0) / n_subject
+        coefficient_star = coefficient + boot_residual
+
+        bdry_star, _, _, _ = contour_points(coefficient_star, thr)
+        if len(bdry_star) == 0:
+            continue
+
+        stat = directed_hausdorff_distance(est_bdry, bdry_star)
+        """
+        d2 = directed_hausdorff_distance(bdry_star, est_bdry)
+        stat = max(stat, d2)
+        """
+        boot_stats.append(stat)
+
+    boot_stats = np.asarray(boot_stats, dtype=float)
+    return boot_stats, est_bdry, coefficient
 
 
     

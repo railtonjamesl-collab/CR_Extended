@@ -14,9 +14,9 @@ from scipy.spatial.distance import directed_hausdorff
 
 #initialising parameters
 field_shape = (100,100)
-n_subject = 100
+n_subject = 50
 threshold = 2
-boot_rep = 100
+boot_rep = 1000
 
 signal_type = 'circle'
 signal_fwhm = 3
@@ -27,7 +27,7 @@ radius = 30
 magnitude = 3
 minsig = 0
 maxsig = 3
-alhpa = 0.1
+alpha = 0.1
 
 
 #generate signal
@@ -41,10 +41,26 @@ if signal_type == 'gradient':
 signal_sigma = util.fwhm_to_sigma(signal_fwhm)
 signal_field = ndimage.gaussian_filter(signal_field, signal_sigma)
 
+#generate instances by adding the signal field to a smoothed gaussian
+noise_fields = util.gaussian_noise_field(field_shape, n_subject, noise_fwhm, noise_scale)
+instances = signal_field + noise_fields
 
-#generate and add the smoothed noise to the signal field
-noise_field = util.gaussian_noise_field(field_shape, n_subject, noise_fwhm, noise_scale)
-signal_field = signal_field + noise_field
+#compute ols estimator
+coefficient = np.mean(instances, axis = 0)
+
+#Bowring method's Bootstraping
+supremum_values = util.Bowring_bootstrap(instances, coefficient, boot_rep, threshold)
+k = np.quantile(supremum_values, 1-alpha)
+
+
+result = util.contour_interpolation(coefficient, threshold)
+    
+
+
+
+
+
+
 
 
 
